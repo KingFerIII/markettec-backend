@@ -7,6 +7,23 @@ from .models import Profile  # <-- IMPORTANTE: Importa el Profile
 
 User = get_user_model()
 
+class PublicProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer para MOSTRAR PÚBLICAMENTE al vendedor.
+    Solo muestra información no sensible (como en la app).
+    """
+    # Leemos el 'first_name' (Nombre completo) del 'user' asociado
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    
+    class Meta:
+        model = Profile
+        # Mostramos solo los campos que son seguros y públicos
+        fields = [
+            'first_name', 
+            'profile_image',
+            'career',
+        ]
+# ---------------------------------
 
 class ProfileSerializer(serializers.ModelSerializer):
     """

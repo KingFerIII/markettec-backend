@@ -3,6 +3,7 @@
 from rest_framework import serializers
 from .models import Product, Category
 from apps.users.serializers import ProfileSerializer # Para mostrar info del vendedor
+from apps.users.serializers import PublicProfileSerializer
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,7 +18,7 @@ class ProductSerializer(serializers.ModelSerializer):
     
     # Anidamos el perfil del vendedor para mostrar sus datos
     # Usamos read_only=True porque este campo se asignará automáticamente
-    vendor = ProfileSerializer(read_only=True)
+    vendor = PublicProfileSerializer(read_only=True)
     
     # Mostramos el nombre de la categoría, no solo el ID
     category_name = serializers.CharField(source='category.name', read_only=True)
