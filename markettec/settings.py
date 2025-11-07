@@ -18,6 +18,17 @@ from dotenv import load_dotenv # <-- ¡AÑADE ESTA LÍNEA!
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Carga las variables del archivo .env
+load_dotenv(BASE_DIR / '.env')
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# Lee la SECRET_KEY desde el archivo .env
+SECRET_KEY = os.getenv('SECRET_KEY')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+# Lee el DEBUG desde el archivo .env
+DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 't']
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
