@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     'apps.audits',
     'apps.reports',
     'apps.reviews',
+
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -72,6 +74,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'markettec.urls'
@@ -155,6 +158,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 SIMPLE_JWT = {
@@ -180,3 +184,4 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",  # Puerto estándar de Vue
     "http://127.0.0.1:8080",
 ]
+

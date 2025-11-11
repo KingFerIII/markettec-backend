@@ -24,6 +24,7 @@ from rest_framework_simplejwt.views import (
 )
 from django.conf import settings
 from django.conf.urls.static import static
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -43,6 +44,12 @@ urlpatterns = [
     path('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
     path('api/', include('apps.reports.urls')),
     path('api/', include('apps.reviews.urls')),
+
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Interfaz de Swagger UI:
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    # Interfaz de ReDoc:
+    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
 # Esto permite que el servidor de desarrollo sirva las imágenes que subas
