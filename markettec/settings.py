@@ -53,15 +53,20 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'django_rest_passwordreset',
 
+    'corsheaders',
+
     'apps.users.apps.UsersConfig',
     'apps.products',
     'apps.orders',
     'apps.audits',
+    'apps.reports',
+    'apps.reviews',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -166,3 +171,12 @@ MEDIA_URL = '/media/'
 
 # Ruta en tu PC donde se guardarán los archivos (en la raíz de tu proyecto)
 MEDIA_ROOT = BASE_DIR / 'media'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Puerto estándar de React
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",  # Puerto estándar de Vite (React/Vue)
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",  # Puerto estándar de Vue
+    "http://127.0.0.1:8080",
+]

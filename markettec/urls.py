@@ -41,6 +41,8 @@ urlpatterns = [
     path('api/', include('apps.audits.urls')),
     path('api-auth/', include('rest_framework.urls')),
     path('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+    path('api/', include('apps.reports.urls')),
+    path('api/', include('apps.reviews.urls')),
 ]
 
 # Esto permite que el servidor de desarrollo sirva las imágenes que subas

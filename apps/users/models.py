@@ -53,6 +53,12 @@ class Profile(models.Model):
         blank=True, 
         verbose_name='Foto de Perfil'
     )
+    is_banned = models.BooleanField(default=False, verbose_name='Está Baneado')
+    ban_reason = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name='Razón de Baneo'
+    )
 
     def __str__(self):
         return f'Perfil de {self.user.username} ({self.get_role_display()})'

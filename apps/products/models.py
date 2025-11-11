@@ -39,7 +39,7 @@ class Product(models.Model):
     status = models.CharField(
         max_length=10, 
         choices=STATUS_CHOICES, 
-        default='pending', # ¡Los productos nuevos siempre entran como pendientes!
+        default='active', # ¡Los productos nuevos siempre entran como pendientes!
         verbose_name='Estatus'
     )
     

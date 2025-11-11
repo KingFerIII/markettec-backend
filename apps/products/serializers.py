@@ -38,10 +38,7 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
         
         # --- Reglas de la API ---
-        read_only_fields = [
-            'status', # El admin lo controla desde el /admin/, no el vendedor
-            'vendor'  # Se asigna automáticamente
-        ]
+        read_only_fields = ['vendor', 'status',]
         
         # Hacemos 'category' de solo escritura (write_only)
         # porque ya mostramos 'category_name' para lectura.

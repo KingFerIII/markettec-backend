@@ -123,22 +123,22 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     # --- ¡NUEVO ENDPOINT PARA "MIS PUBLICACIONES"! ---
     @action(detail=False, methods=['get'])
-    def my_publications(self, request):
+    def pending_review(self, request):
         """
-        Endpoint para ver solo los productos publicados por el usuario logueado.
-        URL: GET /api/products/my_publications/
+        Endpoint solo para Admins.
+        Devuelve una lista de productos con estado 'pending'.
+        URL: GET /api/products/pending_review/
         """
-        # (La permission_class 'IsAuthenticated' ya protegió esto)
+        # (El permiso 'IsAdminUser' ya protegió esta acción)
         
-        # Filtramos los productos donde el 'vendor' sea el perfil del usuario
-        products = Product.objects.filter(vendor=self.request.user.profile)
+        # Filtramos productos que están 'pendientes'
+        pending_products = Product.objects.filter(status='pending')
         
-        # Paginamos los resultados
-        page = self.paginate_queryset(products)
+        # Paginamos los resultados (buena práctica)
+        page = self.paginate_queryset(pending_products)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         
-        # Serializamos y devolvemos
-        serializer = self.get_serializer(products, many=True)
+        serializer = self.get_serializer(pending_products, many=True)
         return Response(serializer.data)
