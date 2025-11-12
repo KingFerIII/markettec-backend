@@ -2,8 +2,8 @@
 
 from rest_framework import serializers
 from .models import Product, Category
-from apps.users.serializers import ProfileSerializer # Para mostrar info del vendedor
-from apps.users.serializers import PublicProfileSerializer
+# Importamos el serializer PÚBLICO que creamos
+from apps.users.serializers import PublicProfileSerializer 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,13 +14,11 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     """
     Serializer principal para el Producto.
+    (Actualizado para incluir la imagen)
     """
     
-    # Anidamos el perfil del vendedor para mostrar sus datos
-    # Usamos read_only=True porque este campo se asignará automáticamente
+    # Usamos el serializer público para no exponer datos privados
     vendor = PublicProfileSerializer(read_only=True)
-    
-    # Mostramos el nombre de la categoría, no solo el ID
     category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
@@ -32,16 +30,15 @@ class ProductSerializer(serializers.ModelSerializer):
             'price', 
             'inventory', 
             'status', 
-            'vendor', # El perfil anidado
-            'category', # El ID de la categoría (para escribir)
-            'category_name' # El nombre (para leer)
+            'vendor', 
+            'category', 
+            'category_name',
+            'product_image' # <-- ¡CAMPO NUEVO AÑADIDO!
         ]
         
-        # --- Reglas de la API ---
-        read_only_fields = ['vendor', 'status',]
+        # El 'status' es 'read_only' porque es automático (default='active')
+        read_only_fields = ['status', 'vendor']
         
-        # Hacemos 'category' de solo escritura (write_only)
-        # porque ya mostramos 'category_name' para lectura.
         extra_kwargs = {
             'category': {'write_only': True}
         }

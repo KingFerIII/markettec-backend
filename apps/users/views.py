@@ -6,156 +6,102 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserSerializer, RegisterSerializer
 from .permissions import IsAdminUser, IsOwnerOrAdmin
 from apps.audits.models import AuditLog
+from drf_spectacular.utils import extend_schema # <-- Importar para Swagger
 
 User = get_user_model()
 
 
+@extend_schema(tags=['2. Usuarios']) # <-- ¡ETIQUETA AÑADIDA!
 class UserViewSet(viewsets.ModelViewSet):
     """
     Endpoint para ver y gestionar usuarios.
-    Altamente restringido por la función 'get_permissions'.
+    Permite a los Admins ver la lista completa y banear, 
+    y a los usuarios editar su propio perfil.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+    def get_serializer_class(self):
+        if self.action == 'profile':
+            from .serializers import SimpleUserSerializer
+            return SimpleUserSerializer
+        return UserSerializer
+
     def get_permissions(self):
-        """
-        Asigna permisos específicos basados en la acción (list, create, retrieve, etc.)
-        """
         permission_classes = []
         
-        # --- ¡PERMISOS ACTUALIZADOS! ---
-        if self.action in [
-            'list', 'create', 'destroy', 
-            'banned_users', 'ban_user', 'unban_user' # Nuevas acciones de admin
-        ]:
-            # Solo Admins pueden listar, crear, borrar o banear.
+        if self.action in ['list', 'create', 'destroy', 'banned_users', 'ban_user', 'unban_user']:
             permission_classes = [IsAdminUser]
-            
         elif self.action in ['retrieve', 'update', 'partial_update']:
-            # El dueño o un Admin pueden ver/editar un perfil específico por ID.
             permission_classes = [IsOwnerOrAdmin]
-            
         elif self.action == 'profile':
-            # Tu endpoint personalizado: cualquier usuario autenticado puede ver SU perfil.
             permission_classes = [permissions.IsAuthenticated]
-            
         else:
-            # Cualquier otra acción futura, por seguridad, solo admin.
             permission_classes = [IsAdminUser]
 
         return [permission() for permission in permission_classes]
 
+    @extend_schema(tags=['2. Usuarios'], summary="Ver Perfil (Usuario Logueado)")
     @decorators.action(detail=False, methods=['get'])
     def profile(self, request):
-        """
-        Devuelve los datos del usuario autenticado.
-        Endpoint: GET /api/users/profile/
-        """
+        """ Devuelve los datos del usuario autenticado (sin campos sensibles). """
         serializer = self.get_serializer(request.user)
         return response.Response(serializer.data)
 
-    # --- ¡NUEVA ACCIÓN PARA VER BANEADOS! ---
+    @extend_schema(tags=['2. Usuarios'], summary="Ver Lista de Baneados (Admin)")
     @decorators.action(detail=False, methods=['get'])
     def banned_users(self, request):
-        """
-        Endpoint solo para Admins.
-        Devuelve una lista de usuarios con 'is_banned=True'.
-        URL: GET /api/users/banned_users/
-        """
-        # (El permiso 'IsAdminUser' ya protegió esta acción)
-        
-        # Filtramos usuarios cuyo perfil tenga is_banned = True
+        """ Devuelve una lista de usuarios con 'is_banned=True'. """
         banned_users = User.objects.filter(profile__is_banned=True)
-        
-        # Paginamos (si está configurado)
         page = self.paginate_queryset(banned_users)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
         serializer = self.get_serializer(banned_users, many=True)
         return response.Response(serializer.data)
 
-    # --- ¡NUEVA ACCIÓN PARA BANEAR! ---
+    @extend_schema(tags=['2. Usuarios'], summary="Banear Usuario (Admin)")
     @decorators.action(detail=True, methods=['post'])
     def ban_user(self, request, pk=None):
-        """
-        Endpoint solo para Admins. Marca a un usuario como baneado.
-        URL: POST /api/users/<id>/ban_user/
-        """
+        """ Marca a un usuario como baneado y registra la razón. """
         try:
-            user = self.get_object() # Obtiene el usuario
+            user = self.get_object() 
         except User.DoesNotExist:
-            return response.Response(
-                {'error': 'Usuario no encontrado.'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return response.Response({'error': 'Usuario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         reason = request.data.get('reason')
         if not reason:
-            return response.Response(
-                {'error': 'Se requiere una razón (reason) para banear.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if hasattr(user, 'profile'): # Comprobamos que tenga perfil
+            return response.Response({'error': 'Se requiere una razón (reason) para banear.'}, status=status.HTTP_400_BAD_REQUEST)
+        if hasattr(user, 'profile'): 
             user.profile.is_banned = True
             user.profile.ban_reason = reason
             user.profile.save()
-            
-            # Registrar en la bitácora
             AuditLog.objects.create(
-                user=request.user, # El admin que hace la acción
-                action='USER_BANNED',
-                details=f"Admin '{request.user.username}' baneó a '{user.username}' (ID: {user.id})"
+                user=request.user, action='USER_BANNED', details=f"Admin '{request.user.username}' baneó a '{user.username}'. Razón: {reason}"
             )
-            
-            return response.Response(
-                {'status': f'Usuario {user.username} ha sido baneado.'},
-                status=status.HTTP_200_OK
-            )
-        return response.Response(
-            {'error': 'El usuario no tiene perfil.'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
+            return response.Response({'status': f'Usuario {user.username} ha sido baneado.'}, status=status.HTTP_200_OK)
+        return response.Response({'error': 'El usuario no tiene perfil.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # --- ¡NUEVA ACCIÓN PARA DESBANEAR! ---
+    @extend_schema(tags=['2. Usuarios'], summary="Desbanear Usuario (Admin)")
     @decorators.action(detail=True, methods=['post'])
     def unban_user(self, request, pk=None):
-        """
-        Endpoint solo para Admins. Quita el baneo a un usuario.
-        URL: POST /api/users/<id>/unban_user/
-        """
+        """ Quita el baneo a un usuario. """
         try:
-            user = self.get_object() # Obtiene el usuario
+            user = self.get_object() 
         except User.DoesNotExist:
-            return response.Response(
-                {'error': 'Usuario no encontrado.'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return response.Response({'error': 'Usuario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if hasattr(user, 'profile'): # Comprobamos que tenga perfil
+        if hasattr(user, 'profile'):
             user.profile.is_banned = False
             user.profile.ban_reason = None
             user.profile.save()
-            
-            # Registrar en la bitácora
             AuditLog.objects.create(
-                user=request.user, # El admin que hace la acción
-                action='USER_UNBANNED',
-                details=f"Admin '{request.user.username}' quitó el baneo a '{user.username}' (ID: {user.id})"
+                user=request.user, action='USER_UNBANNED', details=f"Admin '{request.user.username}' quitó el baneo a '{user.username}'"
             )
-            
-            return response.Response(
-                {'status': f'Usuario {user.username} ha sido desbaneado.'},
-                status=status.HTTP_200_OK
-            )
-        return response.Response(
-            {'error': 'El usuario no tiene perfil.'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
+            return response.Response({'status': f'Usuario {user.username} ha sido desbaneado.'}, status=status.HTTP_200_OK)
+        return response.Response({'error': 'El usuario no tiene perfil.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(tags=['1. Autenticación'], summary="Registro de Usuario")
 class RegisterViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     Endpoint para registrar un nuevo usuario (solo acción 'create').
@@ -165,31 +111,12 @@ class RegisterViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = RegisterSerializer
 
     def create(self, request, *args, **kwargs):
-        """
-        Registra un nuevo usuario, crea un log de auditoría
-        y devuelve sus tokens JWT.
-        """
+        """ Registra un nuevo usuario y devuelve sus tokens JWT. """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        # 1. El usuario se guarda en la base de datos
         user = serializer.save() 
-
-        # --- ¡CONEXIÓN DE BITÁCORA! ---
-        # 2. Creamos el registro de auditoría
-        AuditLog.objects.create(
-            user=user, # Asocia el log al usuario que se acaba de crear
-            action='USER_REGISTERED',
-            details=f"Nuevo usuario registrado: '{user.username}' (ID: {user.id})"
-        )
-        # --- FIN DE BITÁCORA ---
-
-        # 3. Generar tokens JWT automáticamente
+        AuditLog.objects.create(user=user, action='USER_REGISTERED', details=f"Nuevo usuario registrado: '{user.username}' (ID: {user.id})")
         refresh = RefreshToken.for_user(user)
-
-        # 4. Devolver la respuesta
         return response.Response({
-            "user": serializer.data,
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
+            "user": serializer.data, "refresh": str(refresh), "access": str(refresh.access_token),
         }, status=status.HTTP_201_CREATED)

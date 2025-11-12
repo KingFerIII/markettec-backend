@@ -3,7 +3,9 @@ from rest_framework import viewsets, permissions
 from .models import AuditLog
 from .serializers import AuditLogSerializer
 from apps.users.permissions import IsAdminUser # ¡Reutilizamos nuestro permiso!
+from drf_spectacular.utils import extend_schema
 
+@extend_schema(tags=['8. Auditoría (Admin)'])
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Endpoint de API de SOLO LECTURA para que los Admins

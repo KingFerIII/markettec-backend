@@ -4,7 +4,9 @@ from rest_framework import viewsets
 from .models import Review
 from .serializers import ReviewSerializer
 from .permissions import IsReviewOwnerOrReadOnly # ¡Nuestro nuevo permiso!
+from drf_spectacular.utils import extend_schema
 
+@extend_schema(tags=['4. Reseñas'])
 class ReviewViewSet(viewsets.ModelViewSet):
     """
     API Endpoint para Reseñas (Create, Edit, Delete, View).

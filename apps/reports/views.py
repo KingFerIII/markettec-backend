@@ -7,7 +7,9 @@ from .models import Report
 from .serializers import ReportSerializer
 from .permissions import IsAdminOrReadOnly
 from apps.users.permissions import IsAdminUser
+from drf_spectacular.utils import extend_schema
 
+@extend_schema(tags=['7. Reportes'])
 class ReportViewSet(mixins.CreateModelMixin,
                    mixins.ListModelMixin,
                    mixins.RetrieveModelMixin,
@@ -80,6 +82,7 @@ class ReportViewSet(mixins.CreateModelMixin,
     # --- FIN DEL MÉTODO NUEVO ---
 
     # --- ¡NUEVO ENDPOINT AÑADIDO AL FINAL! ---
+    @extend_schema(summary="Mis Reportes")
     @action(detail=False, methods=['get'])
     def my_reports(self, request):
         """
