@@ -1,5 +1,3 @@
-# En: apps/reviews/models.py
-
 from django.db import models
 from apps.users.models import Profile
 from apps.products.models import Product
@@ -14,7 +12,7 @@ class Review(models.Model):
     # El producto que está siendo reseñado
     product = models.ForeignKey(
         Product, 
-        on_delete=models.CASCADE, # Si se borra el producto, se borran sus reseñas
+        on_delete=models.CASCADE, 
         related_name='reviews',
         verbose_name='Producto'
     )
@@ -22,7 +20,7 @@ class Review(models.Model):
     # Quién hizo la reseña
     reviewer = models.ForeignKey(
         Profile, 
-        on_delete=models.CASCADE, # Si se borra el perfil, se borran sus reseñas
+        on_delete=models.CASCADE, 
         related_name='reviews_made',
         verbose_name='Autor de la reseña'
     )
@@ -43,14 +41,9 @@ class Review(models.Model):
         verbose_name_plural = 'Reseñas'
         ordering = ['-created_at']
         
-        # --- ¡REGLA DE NEGOCIO IMPORTANTE! ---
-        # Un usuario solo puede dejar UNA reseña por producto.
-        constraints = [
-            models.UniqueConstraint(
-                fields=['reviewer', 'product'], 
-                name='unique_review_per_user_product'
-            )
-        ]
+        # --- ¡RESTRICCIÓN ELIMINADA! ---
+        # Al borrar el bloque 'constraints', ahora el usuario puede
+        # comentar infinitas veces en el mismo producto.
 
     def __str__(self):
         reviewer_name = self.reviewer.user.username if self.reviewer and self.reviewer.user else 'N/A'
