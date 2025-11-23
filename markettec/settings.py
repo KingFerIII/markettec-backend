@@ -124,10 +124,10 @@ REST_FRAMEWORK = {
     ),
     # Configuración de OpenAPI/Swagger
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    
+
     # --- ¡AGREGA ESTO PARA LA PAGINACIÓN! ---
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20, # Manda de 20 en 20 items (puedes cambiar el número)
+    #'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    #'PAGE_SIZE': 20, # Manda de 20 en 20 items (puedes cambiar el número)
 
     
 }
