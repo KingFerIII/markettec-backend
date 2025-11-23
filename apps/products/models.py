@@ -10,6 +10,13 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
     description = models.TextField(blank=True, null=True, verbose_name='Descripción')
 
+    image = models.ImageField(
+        upload_to='categories/', 
+        null=True, 
+        blank=True, 
+        verbose_name='Imagen de Categoría'
+    )
+
     def __str__(self):
         return self.name
 
