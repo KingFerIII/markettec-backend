@@ -1,10 +1,8 @@
-# En: apps/products/views.py
-
 from rest_framework import viewsets, permissions, status, response
 from rest_framework.decorators import action
 
 # --- IMPORTACIONES CLAVE ---
-from django.db.models import Avg, Q  # <--- Agregamos 'Q' para la búsqueda OR
+from django.db.models import Avg, Q  # <--- Para búsqueda OR y promedios
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from .models import Product, Category
@@ -25,11 +23,11 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=['3. Productos y Categorías'],
-    # Documentamos el parámetro 'q' para que Armando lo vea en Swagger
+    # Documentamos el parámetro 'q' para que aparezca en Swagger
     parameters=[
         OpenApiParameter(
             name='q',
-            type=OpenApiTypes.STRING,
+            type=OpenApiTypes.STR, # <--- ¡CORREGIDO! (Antes decía STRING y daba error)
             location=OpenApiParameter.QUERY,
             description='Búsqueda por nombre, descripción o categoría (ej. ?q=iphone)'
         )
