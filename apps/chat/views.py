@@ -8,7 +8,7 @@ from .serializers import ConversationSerializer, MessageSerializer
 from apps.users.models import Profile
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
-@extend_schema(tags=['7. Chat'])
+@extend_schema(tags=['9. Chat'])
 class ConversationViewSet(viewsets.ModelViewSet):
     """
     API de Chats.
@@ -60,7 +60,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-@extend_schema(tags=['7. Chat'])
+@extend_schema(tags=['9. Chat'])
 class MessageViewSet(mixins.CreateModelMixin,
                      mixins.ListModelMixin,
                      viewsets.GenericViewSet):
