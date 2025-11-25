@@ -69,6 +69,7 @@ urlpatterns = [
     path('api/', include('apps.favorites.urls')), 
     path('api-auth/', include('rest_framework.urls')),
     path('api/password_reset/', include('apps.users.password_reset_urls')),
+    path('api/', include('apps.chat.urls')),
 
 
     # --- Rutas de SWAGGER (OpenAPI) ---
