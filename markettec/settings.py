@@ -169,6 +169,7 @@ SPECTACULAR_SETTINGS = {
         {'name': '6. Pedidos', 'description': 'Gestión del ciclo de vida de los pedidos.'},
         {'name': '7. Reportes', 'description': 'Creación y gestión de reportes de usuarios.'},
         {'name': '8. Auditoría (Admin)', 'description': 'Consulta del historial de acciones (solo Admin).'},
+        {'name': '9. Chat', 'description': 'Mensajería entre cliente y vendedor (Texto, Fotos, Audio y Ubicación).'},
     ],
 }
 
