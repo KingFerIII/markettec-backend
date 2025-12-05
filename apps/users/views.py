@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, decorators, response, status, mixins
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserSerializer, RegisterSerializer
+from .serializers import UserSerializer, RegisterSerializer, SimpleUserSerializer
 from .permissions import IsAdminUser, IsOwnerOrAdmin
 from apps.audits.models import AuditLog
 from drf_spectacular.utils import extend_schema
@@ -19,32 +19,59 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_serializer_class(self):
+        # Si la acción es 'profile':
         if self.action == 'profile':
-            from .serializers import SimpleUserSerializer
-            return SimpleUserSerializer
+            # Y es un GET (Ver), usamos el simple
+            if self.request.method == 'GET':
+                return SimpleUserSerializer
+            # Si es PUT/PATCH (Editar), usamos el completo (para manejar fotos y datos anidados)
+            return UserSerializer
+            
         return UserSerializer
 
     def get_permissions(self):
         permission_classes = []
         
-        # 'create' aquí se refiere a un Admin creando usuarios manualmente (/api/users/)
+        # Acciones de Admin
         if self.action in ['list', 'create', 'destroy', 'banned_users', 'ban_user', 'unban_user']:
             permission_classes = [IsAdminUser]
+        
+        # Acciones por ID (ej. /api/users/5/)
         elif self.action in ['retrieve', 'update', 'partial_update']:
             permission_classes = [IsOwnerOrAdmin]
+        
+        # Acción "Mi Perfil" (/api/users/profile/) -> Solo requiere estar logueado
         elif self.action == 'profile':
             permission_classes = [permissions.IsAuthenticated]
+            
         else:
             permission_classes = [IsAdminUser]
 
         return [permission() for permission in permission_classes]
 
-    @extend_schema(tags=['2. Usuarios'], summary="Ver Perfil (Usuario Logueado)")
-    @decorators.action(detail=False, methods=['get'])
+    # --- ¡AQUÍ ESTÁ LA MAGIA! ---
+    @extend_schema(summary="Ver o Editar Mi Perfil")
+    @decorators.action(detail=False, methods=['get', 'put', 'patch']) # <-- ¡Soporte para edición!
     def profile(self, request):
-        """ Devuelve los datos del usuario autenticado (sin campos sensibles). """
-        serializer = self.get_serializer(request.user)
+        """ 
+        GET: Devuelve mis datos.
+        PATCH: Actualiza mis datos (Foto, Teléfono, etc).
+        """
+        user = request.user
+        
+        # Si es una actualización (PUT o PATCH)
+        if request.method in ['PUT', 'PATCH']:
+            # Usamos el UserSerializer
+            # partial=True permite mandar solo la foto sin tener que mandar el resto de datos
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return response.Response(serializer.data)
+
+        # Si es solo ver (GET)
+        serializer = self.get_serializer(user)
         return response.Response(serializer.data)
+    # ----------------------------
 
     @extend_schema(tags=['2. Usuarios'], summary="Ver Lista de Baneados (Admin)")
     @decorators.action(detail=False, methods=['get'])
@@ -104,12 +131,9 @@ class RegisterViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     queryset = User.objects.all()
     
-    # --- ¡LA SOLUCIÓN! ---
-    # Desactivamos la autenticación para este endpoint. 
-    # Así, si Android manda un token viejo por error, NO fallará.
+    # Mantenemos la corrección del Registro que hicimos antes
     authentication_classes = [] 
     permission_classes = [permissions.AllowAny]
-    # ---------------------
     
     serializer_class = RegisterSerializer
 
@@ -119,9 +143,10 @@ class RegisterViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save() 
         
-        # AuditLog puede fallar si 'user' no está autenticado (request.user es Anonymous),
-        # pero aquí 'user' es el nuevo usuario creado.
-        AuditLog.objects.create(user=user, action='USER_REGISTERED', details=f"Nuevo usuario registrado: '{user.username}' (ID: {user.id})")
+        try:
+            AuditLog.objects.create(user=user, action='USER_REGISTERED', details=f"Nuevo usuario registrado: '{user.username}' (ID: {user.id})")
+        except Exception:
+            pass # Si falla el log, no rompemos el registro
         
         refresh = RefreshToken.for_user(user)
         return response.Response({

@@ -1,5 +1,4 @@
 # En: apps/users/serializers.py
-# (¡Versión completa y corregida para la lógica de Baneo!)
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
@@ -7,35 +6,41 @@ from rest_framework.validators import UniqueValidator
 from .models import Profile  
 from apps.audits.models import AuditLog
 
-# --- ¡NUEVAS IMPORTACIONES PARA EL LOGIN SEGURO! ---
+# --- NUEVAS IMPORTACIONES PARA EL LOGIN SEGURO ---
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils.translation import gettext_lazy as _
 
 User = get_user_model()
 
-# --- 1. SERIALIZER PÚBLICO (Para la API de Productos) ---
-# (Este se queda como lo teníamos)
+# --- 1. SERIALIZER PÚBLICO (Para la API de Productos/Vendedores) ---
 class PublicProfileSerializer(serializers.ModelSerializer):
     """
     Serializer para MOSTRAR PÚBLICAMENTE al vendedor.
     (Solo muestra campos no sensibles)
     """
     first_name = serializers.CharField(source='user.first_name', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    
+    # --- ¡ESTA ES LA LÍNEA QUE FALTABA! ---
+    # Exponemos el ID del Usuario para el Chat
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    # --------------------------------------
     
     class Meta:
         model = Profile
         fields = [
+            'id',           # ID del Perfil
+            'user_id',      # ID del Usuario (¡Vital para el Chat!)
             'first_name', 
+            'username',
             'profile_image',
             'career',
         ]
 
 # --- 2. SERIALIZER PRIVADO (Para el Panel de ADMIN) ---
-# (Este SÍ incluye los campos de baneo para que el Admin los vea)
 class ProfileSerializer(serializers.ModelSerializer):
     """
     Serializer para LEER Y ESCRIBIR los datos PRIVADOS del Perfil.
-    (Usado por el UserSerializer anidado del Admin)
     """
     class Meta:
         model = Profile
@@ -51,24 +56,21 @@ class ProfileSerializer(serializers.ModelSerializer):
         ]
 
 # --- 3. SERIALIZER DE USUARIO (Para el Panel de ADMIN) ---
-# (Este SÍ incluye el ProfileSerializer completo)
 class UserSerializer(serializers.ModelSerializer):
     """
     Serializer principal del Usuario (PARA ADMINS).
-    Muestra los datos del User Y anida los datos del Profile completo.
     """
     email = serializers.EmailField(
         required=False,
         validators=[UniqueValidator(queryset=User.objects.all())]
     )
     
-    profile = ProfileSerializer() # <-- Anida el serializer PRIVADO (con baneo)
+    profile = ProfileSerializer()
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'profile']
 
-    # --- MÉTODO 'UPDATE' COMPLETO (Para el Admin) ---
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', {})
         instance = super().update(instance, validated_data)
@@ -88,14 +90,8 @@ class UserSerializer(serializers.ModelSerializer):
         profile.save()
         return instance
 
-# --- ¡NUEVAS CLASES PARA EL PERFIL PÚBLICO DEL USUARIO! ---
-# --- (Implementan el Bug #10) ---
-
+# --- SERIALIZERS PARA EL PERFIL PÚBLICO DEL USUARIO ---
 class SimpleProfileSerializer(serializers.ModelSerializer):
-    """
-    Serializer para el perfil PÚBLICO del usuario (GET /api/users/profile/)
-    Oculta los campos de baneo.
-    """
     class Meta:
         model = Profile
         fields = [
@@ -105,53 +101,29 @@ class SimpleProfileSerializer(serializers.ModelSerializer):
             'career',
             'date_of_birth',
             'profile_image'
-            # Nota: 'is_banned' y 'ban_reason' están ocultos
         ]
 
 class SimpleUserSerializer(serializers.ModelSerializer):
-    """
-    Serializer PÚBLICO del Usuario (GET /api/users/profile/)
-    Usa el SimpleProfileSerializer.
-    """
     profile = SimpleProfileSerializer()
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'profile']
-# --------------------------------------------------------
 
-
-# --- ¡NUEVA CLASE PARA EL LOGIN SEGURO! ---
-# --- (Implementa el Bug #10) ---
-
+# --- LOGIN SEGURO (Baneo) ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    Serializer de Login Personalizado.
-    Revisa si el usuario está baneado ANTES de darle un token.
-    """
     @classmethod
     def get_token(cls, user):
-        # Esta función se llama si el user/pass son correctos
-        
-        # --- ¡NUESTRA LÓGICA DE BANEO! ---
         if hasattr(user, 'profile') and user.profile.is_banned:
-            # Si está baneado, lanzamos un error de "no autorizado"
             raise serializers.ValidationError(
                 _("Tu cuenta ha sido baneada. Contacta al administrador."), 
                 code='authorization'
             )
-        # ----------------------------------
-            
-        # Si no está baneado, continúa con el login normal
         token = super().get_token(user)
         return token
-# ---------------------------------------
 
-
-# --- 4. SERIALIZER DE REGISTRO (Para /api/register/) ---
-# (Este se queda como lo teníamos)
+# --- 4. SERIALIZER DE REGISTRO ---
 class RegisterSerializer(serializers.ModelSerializer):
-    # ... (Campos del User: first_name, username, email, etc.) ...
     first_name = serializers.CharField(required=True, label='Nombre completo')
     username = serializers.CharField(
         required=True, label='Nombre de usuario',
@@ -164,7 +136,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, label='Contraseña')
     password2 = serializers.CharField(write_only=True, required=True, label='Confirmar contraseña')
 
-    # ... (Campos del Profile: control_number, career, etc.) ...
     control_number = serializers.CharField(required=True, label='Número de Control', write_only=True)
     career = serializers.CharField(required=True, label='Carrera', write_only=True)
     phone_number = serializers.CharField(required=True, label='Número de Teléfono', write_only=True)
@@ -183,7 +154,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # ... (lógica de create) ...
         profile_data = {
             'control_number': validated_data.pop('control_number'),
             'career': validated_data.pop('career'),
@@ -200,14 +170,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**user_data)
         Profile.objects.filter(user=user).update(**profile_data)
 
-        # ... (lógica de bitácora) ...
         try:
             AuditLog.objects.create(
                 user=user,
                 action='USER_REGISTERED',
                 details=f"Nuevo usuario registrado: '{user.username}' (ID: {user.id})"
             )
-        except ImportError:
+        except Exception:
             pass
 
         return user
