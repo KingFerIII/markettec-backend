@@ -5,8 +5,6 @@ from django.contrib.auth import get_user_model
 from rest_framework.validators import UniqueValidator
 from .models import Profile  
 from apps.audits.models import AuditLog
-
-# --- NUEVAS IMPORTACIONES PARA EL LOGIN SEGURO ---
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils.translation import gettext_lazy as _
 
@@ -20,11 +18,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
     """
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
-    
-    # --- ¡ESTA ES LA LÍNEA QUE FALTABA! ---
-    # Exponemos el ID del Usuario para el Chat
     user_id = serializers.IntegerField(source='user.id', read_only=True)
-    # --------------------------------------
     
     class Meta:
         model = Profile
@@ -55,38 +49,50 @@ class ProfileSerializer(serializers.ModelSerializer):
             'ban_reason'
         ]
 
-# --- 3. SERIALIZER DE USUARIO (Para el Panel de ADMIN) ---
+# --- 3. SERIALIZER DE USUARIO (Para el Panel de ADMIN y Edición de Perfil) ---
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer principal del Usuario (PARA ADMINS).
+    Serializer principal del Usuario.
     """
     email = serializers.EmailField(
         required=False,
         validators=[UniqueValidator(queryset=User.objects.all())]
     )
     
-    profile = ProfileSerializer()
+    # Hacemos el perfil opcional para evitar errores de validación si no se envía
+    profile = ProfileSerializer(required=False)
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'profile']
 
     def update(self, instance, validated_data):
+        # 1. Intentamos obtener datos anidados (Formato JSON web estandar)
         profile_data = validated_data.pop('profile', {})
+        
+        # 2. MANIOBRA DE RESCATE (Para Android/Multipart)
+        # Si profile_data está vacío (porque Android mandó todo plano),
+        # buscamos los campos "sueltos" en los datos crudos (self.initial_data).
+        if not profile_data:
+            raw_data = self.initial_data
+            # Lista de campos que pertenecen al modelo Profile
+            profile_fields = ['role', 'phone_number', 'control_number', 'career', 'date_of_birth', 'profile_image']
+            
+            for field in profile_fields:
+                if field in raw_data:
+                    # Agregamos el dato al diccionario profile_data
+                    profile_data[field] = raw_data[field]
+
+        # 3. Actualizamos User (first_name, email)
         instance = super().update(instance, validated_data)
+        
+        # 4. Actualizamos Profile
         profile = instance.profile
         
-        profile.role = profile_data.get('role', profile.role)
-        profile.phone_number = profile_data.get('phone_number', profile.phone_number)
-        profile.control_number = profile_data.get('control_number', profile.control_number)
-        profile.career = profile_data.get('career', profile.career)
-        profile.date_of_birth = profile_data.get('date_of_birth', profile.date_of_birth)
-        profile.is_banned = profile_data.get('is_banned', profile.is_banned)
-        profile.ban_reason = profile_data.get('ban_reason', profile.ban_reason)
-
-        if 'profile_image' in profile_data:
-            profile.profile_image = profile_data.get('profile_image')
-
+        for attr, value in profile_data.items():
+            if value is not None: # Solo actualizamos si enviaron un valor
+                setattr(profile, attr, value)
+            
         profile.save()
         return instance
 
