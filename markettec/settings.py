@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 't']
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1, 172.200.235.24').split(',')
 # ---------------------------------
 
 
@@ -183,4 +183,5 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173", # Puerto de Vite
     "http://127.0.0.1:5173",
     # (Aquí añadirías tu IP de Azure cuando despliegues)
+    "http://172.200.235.24",
 ]
