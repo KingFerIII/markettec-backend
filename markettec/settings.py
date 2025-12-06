@@ -178,10 +178,15 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # --- Configuración de CORS (para React) ---
 CORS_ALLOWED_ORIGINS = [
+    "http://172.200.235.24:8000",
+    "http://172.200.235.24",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://localhost:5173", # Puerto de Vite
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
-    # (Aquí añadirías tu IP de Azure cuando despliegues)
+]
+
+CSRF_TRUSTED_ORIGINS = [
     "http://172.200.235.24",
+    "http://172.200.235.24:8000",
 ]
