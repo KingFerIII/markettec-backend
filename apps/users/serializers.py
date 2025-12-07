@@ -118,15 +118,32 @@ class SimpleUserSerializer(serializers.ModelSerializer):
 
 # --- LOGIN SEGURO (Baneo) ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        if hasattr(user, 'profile') and user.profile.is_banned:
-            raise serializers.ValidationError(
-                _("Tu cuenta ha sido baneada. Contacta al administrador."), 
-                code='authorization'
-            )
-        token = super().get_token(user)
-        return token
+    def validate(self, attrs):
+        # 1. Validación estándar (verifica usuario y contraseña)
+        # Si la contraseña está mal, aquí lanzará el error 401 normal.
+        data = super().validate(attrs)
+
+        # 2. Si llegamos aquí, la contraseña es CORRECTA.
+        # Ahora verificamos si está baneado.
+        if hasattr(self.user, 'profile') and self.user.profile.is_banned:
+            
+            # Obtenemos el motivo (o un texto por defecto si está vacío)
+            motivo = self.user.profile.ban_reason or "Sin motivo especificado."
+
+            # 3. Lanzamos un error de Validación (Código 400)
+            # Esto detiene el login y envía este JSON específico al Android.
+            raise serializers.ValidationError({
+                "status": "banned",
+                "detail": "Tu cuenta ha sido suspendida permanentemente.",
+                "ban_reason": motivo  # <--- ¡ESTO ES LO QUE NECESITA TU COMPAÑERO!
+            })
+
+        # 4. Si no está baneado, agregamos datos extra al token/respuesta (opcional)
+        data['username'] = self.user.username
+        data['email'] = self.user.email
+        # data['role'] = self.user.profile.role # Descomenta si necesitas el rol en el login
+
+        return data
 
 # --- 4. SERIALIZER DE REGISTRO ---
 class RegisterSerializer(serializers.ModelSerializer):
