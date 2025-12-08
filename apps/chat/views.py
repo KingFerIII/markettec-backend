@@ -73,13 +73,18 @@ class MessageViewSet(mixins.CreateModelMixin,
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """ Filtra mensajes por ID de conversación """
-        conversation_id = self.request.query_params.get('conversation_id')
+        """ 
+        CORRECCIÓN: Filtro robusto para los mensajes.
+        Acepta 'conversation_id' O 'conversation' y ordena por fecha.
+        """
+        # 1. Buscamos el parámetro con ambos nombres posibles
+        conversation_id = self.request.query_params.get('conversation_id') or self.request.query_params.get('conversation')
+        
         if not conversation_id:
             return Message.objects.none()
         
-        # Seguridad: Solo ver mensajes si soy parte del chat
-        return Message.objects.filter(conversation_id=conversation_id)
+        # 2. Devolvemos los mensajes ordenados (los más viejos primero, tipo WhatsApp)
+        return Message.objects.filter(conversation_id=conversation_id).order_by('created_at')
 
     def perform_create(self, serializer):
         """ Al guardar, asignamos el remitente y actualizamos la fecha del chat """
