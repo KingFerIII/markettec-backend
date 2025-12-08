@@ -40,6 +40,8 @@ class IsOwnerOrAdmin(BasePermission):
         # Verificamos que el producto tenga vendedor asignado
         if not hasattr(obj, 'vendor') or not obj.vendor:
             return False
+        
+        print(f"DEBUG PERMISOS: Dueño ID={obj.vendor.user.id} vs Usuario ID={request.user.id}")
 
         # COMPARAMOS USER IDs DIRECTAMENTE (Números)
         # Esto evita errores de comparación de objetos Profile
