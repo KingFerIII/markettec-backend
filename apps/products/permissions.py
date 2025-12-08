@@ -1,7 +1,7 @@
 # En: apps/products/permissions.py
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
-from apps.users.permissions import IsAdminUser # Importamos el permiso de Admin
+from apps.users.permissions import IsAdminUser 
 
 class IsVendorUser(BasePermission):
     """
@@ -39,17 +39,21 @@ class IsOwnerOrAdmin(BasePermission):
         if request.method in SAFE_METHODS:
             return True
             
-        # Admin tiene permiso total
+        # 1. Si es Admin, tiene permiso total
         if request.user.profile.role == 'admin':
             return True
         
-        # El vendedor dueño del producto ('obj.vendor') puede editar
-        return obj.vendor == request.user.profile
+        # 2. Si es el Dueño (Vendor) del producto
+        # CORRECCIÓN CRÍTICA: Comparamos los IDs (.id) para evitar errores de referencia
+        if hasattr(obj, 'vendor') and hasattr(request.user, 'profile'):
+            return obj.vendor.id == request.user.profile.id
+            
+        return False
 
 class IsOwnerOnly(BasePermission):
     """
     Permite el acceso solo al Vendedor que es dueño del producto.
-    No permite acceso al Admin.
+    No permite acceso al Admin (Estricto).
     """
     message = "Solo el vendedor dueño de este producto puede realizar esta acción."
 
@@ -60,6 +64,9 @@ class IsOwnerOnly(BasePermission):
     def has_object_permission(self, request, view, obj):
         """
         'obj' es la instancia del modelo 'Product'.
-        Comprueba si el 'vendor' del producto es el perfil del usuario.
         """
-        return obj.vendor == request.user.profile
+        # CORRECCIÓN CRÍTICA: Comparamos IDs.
+        if hasattr(obj, 'vendor') and hasattr(request.user, 'profile'):
+            return obj.vendor.id == request.user.profile.id
+            
+        return False
