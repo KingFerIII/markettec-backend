@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status, response
 from rest_framework.decorators import action
 
 # --- IMPORTACIONES CLAVE ---
-from django.db.models import Avg, Q  # <--- Para búsqueda OR y promedios
+from django.db.models import Avg, Q 
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from .models import Product, Category
@@ -23,11 +23,11 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 @extend_schema(
     tags=['3. Productos y Categorías'],
-    # Documentamos el parámetro 'q' para que aparezca en Swagger
     parameters=[
         OpenApiParameter(
             name='q',
-            type=OpenApiTypes.STR, # <--- ¡CORREGIDO! (Antes decía STRING y daba error)
+            # ¡OJO AQUÍ! Debe ser STR, no STRING
+            type=OpenApiTypes.STR, 
             location=OpenApiParameter.QUERY,
             description='Búsqueda por nombre, descripción o categoría (ej. ?q=iphone)'
         )
@@ -38,7 +38,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     Endpoint de API para Productos (Modelo Marketplace Abierto).
     Soporta búsqueda con ?q=texto
     """
-    # Usamos select_related para evitar N+1 queries (Optimización)
     queryset = Product.objects.select_related('category', 'vendor', 'vendor__user').all()
     serializer_class = ProductSerializer
 
@@ -55,7 +54,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             permission_classes = [IsOwnerOrAdmin]
 
         elif self.action == 'mark_out_of_stock':
-            permission_classes = [IsOwnerOnly]
+            # CAMBIO: Usamos IsOwnerOrAdmin para que no sea tan restrictivo
+            permission_classes = [IsOwnerOrAdmin]
 
         elif self.action == 'my_publications':
             permission_classes = [permissions.IsAuthenticated]
@@ -74,24 +74,19 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         
-        # 1. Definimos el Queryset Base (Visibilidad)
         queryset = Product.objects.select_related('category', 'vendor', 'vendor__user')
 
         if user.is_authenticated and hasattr(user, 'profile') and user.profile.role == 'admin':
-            # Admin ve todo (incluso inactivos)
             queryset = queryset.all()
         elif user.is_authenticated and hasattr(user, 'profile'):
-            # Usuarios ven Activos + Sus propios productos (aunque estén inactivos)
             queryset = queryset.filter(Q(status='active') | Q(vendor=user.profile))
         else:
-            # Público general solo ve Activos
             queryset = queryset.filter(status='active')
 
-        # 2. APLICAMOS EL FILTRO DE BÚSQUEDA (Lo que pidió Armando)
+        # Filtro de Búsqueda Global
         query = self.request.query_params.get('q', None)
         
         if query:
-            # Busca en Nombre O Descripción O Categoría
             queryset = queryset.filter(
                 Q(name__icontains=query) | 
                 Q(description__icontains=query) |
@@ -101,7 +96,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        """ Asigna el 'vendor' (dueño) automáticamente. """
         serializer.save(vendor=self.request.user.profile)
 
     @extend_schema(summary="Marcar Agotado")
@@ -131,7 +125,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     @extend_schema(summary="Productos Destacados")
     @action(detail=False, methods=['get'])
     def featured(self, request):
-        """ Top 5 productos con mejor rating. """
         featured_products = Product.objects.filter(status='active').annotate(
             average_rating=Avg('reviews__rating')
         ).filter(average_rating__isnull=False).order_by('-average_rating')
