@@ -18,55 +18,45 @@ class IsVendorUser(BasePermission):
 class IsOwnerOrAdmin(BasePermission):
     """
     Permite el acceso al Admin, o al dueño (Vendedor) del producto.
-    Permite acceso de solo lectura (GET, HEAD, OPTIONS) a cualquiera.
     """
     message = "No tienes permiso para editar este producto."
 
     def has_permission(self, request, view):
-        # Permite peticiones seguras (GET, HEAD, OPTIONS) a todos
+        # 1. Permisos globales: Debe estar autenticado y tener perfil
         if request.method in SAFE_METHODS:
             return True
-        
-        # Para peticiones no seguras (POST, PUT, PATCH, DELETE),
-        # verifica que el usuario esté autenticado.
         return request.user and request.user.is_authenticated and hasattr(request.user, 'profile')
 
     def has_object_permission(self, request, view, obj):
-        """
-        'obj' es la instancia del modelo 'Product'.
-        """
-        # Permite peticiones seguras a todos
+        # 1. Lectura libre
         if request.method in SAFE_METHODS:
             return True
             
-        # 1. Si es Admin, tiene permiso total
+        # 2. Si es Admin, pase VIP
         if request.user.profile.role == 'admin':
             return True
         
-        # 2. Si es el Dueño (Vendor) del producto
-        # CORRECCIÓN CRÍTICA: Comparamos los IDs (.id) para evitar errores de referencia
-        if hasattr(obj, 'vendor') and hasattr(request.user, 'profile'):
-            return obj.vendor.id == request.user.profile.id
-            
-        return False
+        # 3. Validación de Dueño (A PRUEBA DE BALAS)
+        # Verificamos que el producto tenga vendedor asignado
+        if not hasattr(obj, 'vendor') or not obj.vendor:
+            return False
+
+        # COMPARAMOS USER IDs DIRECTAMENTE (Números)
+        # Esto evita errores de comparación de objetos Profile
+        return obj.vendor.user.id == request.user.id
 
 class IsOwnerOnly(BasePermission):
     """
-    Permite el acceso solo al Vendedor que es dueño del producto.
-    No permite acceso al Admin (Estricto).
+    Estricto: Solo el dueño.
     """
     message = "Solo el vendedor dueño de este producto puede realizar esta acción."
 
     def has_permission(self, request, view):
-        # Solo requerimos que esté autenticado para continuar
         return request.user and request.user.is_authenticated and hasattr(request.user, 'profile')
 
     def has_object_permission(self, request, view, obj):
-        """
-        'obj' es la instancia del modelo 'Product'.
-        """
-        # CORRECCIÓN CRÍTICA: Comparamos IDs.
-        if hasattr(obj, 'vendor') and hasattr(request.user, 'profile'):
-            return obj.vendor.id == request.user.profile.id
+        if not hasattr(obj, 'vendor') or not obj.vendor:
+            return False
             
-        return False
+        # COMPARAMOS USER IDs DIRECTAMENTE
+        return obj.vendor.user.id == request.user.id
