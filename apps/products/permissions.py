@@ -1,5 +1,6 @@
 # En: apps/products/permissions.py
 
+import sys
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from apps.users.permissions import IsAdminUser 
 
@@ -41,7 +42,7 @@ class IsOwnerOrAdmin(BasePermission):
         if not hasattr(obj, 'vendor') or not obj.vendor:
             return False
         
-        print(f"DEBUG PERMISOS: Dueño ID={obj.vendor.user.id} vs Usuario ID={request.user.id}")
+        print(f"DEBUG ESPÍA: UserID={request.user.id} vs VendorUserID={obj.vendor.user.id} | Metodo={request.method}", file=sys.stderr)
 
         # COMPARAMOS USER IDs DIRECTAMENTE (Números)
         # Esto evita errores de comparación de objetos Profile
